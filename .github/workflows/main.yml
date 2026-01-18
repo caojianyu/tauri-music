@@ -1,4 +1,4 @@
-name: Build Tauri Linux ARM64
+name: Build Tauri Linux ARM64 (Native)
 
 on:
   push:
@@ -9,41 +9,24 @@ on:
 
 jobs:
   build-linux-arm64:
-    name: Build Linux ARM64 (aarch64)
-    runs-on: ubuntu-22.04
+    name: Build Linux ARM64 (native)
+    runs-on: ubuntu-22.04-arm64
 
     steps:
-      # -------------------------------------------------
-      # Checkout
-      # -------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # -------------------------------------------------
-      # Node.js
-      # -------------------------------------------------
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # ---------------- Node ----------------
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - run: npm ci
 
-      # -------------------------------------------------
-      # Rust
-      # -------------------------------------------------
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
+      # ---------------- Rust ----------------
+      - uses: dtolnay/rust-toolchain@stable
 
-      # -------------------------------------------------
-      # System dependencies
-      # ❗ 不添加 arm64 架构
-      # ❗ 不碰 security.ubuntu.com 的 arm64
-      # -------------------------------------------------
+      # ---------------- System deps ----------------
       - name: Install system dependencies
         run: |
           sudo apt update
@@ -53,38 +36,19 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libssl-dev \
-            pkg-config \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu
+            pkg-config
 
-      # -------------------------------------------------
-      # Tauri CLI
-      # -------------------------------------------------
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+      # ---------------- Tauri ----------------
+      - run: cargo install tauri-cli --locked
 
-      # -------------------------------------------------
-      # Build
-      # 关键点：
-      # - 禁用静态链接（解决 zbus / gtk / glib 链接炸）
-      # - 明确使用 gnu + glibc
-      # -------------------------------------------------
-      - name: Build Tauri ARM64
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          PKG_CONFIG_ALLOW_CROSS: "1"
-          RUSTFLAGS: "-C target-feature=-crt-static"
-          TAURI_STATIC: "false"
+      # ---------------- Build ----------------
+      - name: Build Tauri ARM64 (native)
         run: |
           npm run build
-          cargo tauri build --target aarch64-unknown-linux-gnu
+          cargo tauri build
 
-      # -------------------------------------------------
-      # Upload artifacts
-      # -------------------------------------------------
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      # ---------------- Artifacts ----------------
+      - uses: actions/upload-artifact@v4
         with:
           name: tauri-linux-arm64
-          path: |
-            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle
+          path: src-tauri/target/release/bundle
