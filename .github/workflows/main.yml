@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      # ---------- Checkout ----------
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -27,15 +28,14 @@ jobs:
         run: npm ci
 
       # ---------- Rust ----------
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      # ---------- Linux ARM64 交叉编译工具链 ----------
+      # ---------- System dependencies (NO arm64 architecture) ----------
       - name: Install system dependencies
         run: |
-          sudo dpkg --add-architecture arm64
           sudo apt update
           sudo apt install -y \
             libgtk-3-dev \
@@ -47,21 +47,20 @@ jobs:
             gcc-aarch64-linux-gnu \
             g++-aarch64-linux-gnu
 
-      # ---------- Tauri ----------
+      # ---------- Tauri CLI ----------
       - name: Install Tauri CLI
         run: cargo install tauri-cli --locked
 
       # ---------- Build ----------
-      - name: Build Tauri (ARM64)
+      - name: Build Tauri ARM64
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           PKG_CONFIG_ALLOW_CROSS: "1"
-          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
         run: |
           npm run build
           cargo tauri build --target aarch64-unknown-linux-gnu
 
-      # ---------- Upload ----------
+      # ---------- Upload artifacts ----------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
